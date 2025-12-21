@@ -31,10 +31,12 @@ git clone https://github.com/bekam-bit/Django-gdg-project.git
 cd Django-gdg-project
 ```
 ### Run
+```bash
 python Task.py
-
+```
 ### 📖 Usage
-When you run the app, you’ll see a simple menu:
+When you run the app, you’ll see a simple menu:</br>
+``` bash
 ==== To-Do Menu ====
 1. Add Task
 2. List Tasks
@@ -43,6 +45,7 @@ When you run the app, you’ll see a simple menu:
 5. Delete Task
 6. Exit
 ====================
+```
 ✅ Add Task → Enter a title and description, ID is assigned automatically.
 
 ✅ List Tasks → Shows all tasks with status (✅ Completed / ⏳ Pending).
