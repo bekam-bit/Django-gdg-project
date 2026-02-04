@@ -1,0 +1,26 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}LMS{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'Styles/main.css' %}" />
+    {% block extra_css %}{% endblock %}
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="container">
+        <nav class="nav-links">
+          <a href="{% url 'home' %}">Home</a>
+          <a href="{% url 'book_add' %}">Add Book</a>
+          <a href="{% url 'book_list' %}">Book List</a>
+        </nav>
+      </div>
+    </header>
+    <main class="container">{% block content %}{% endblock %}</main>
+    <footer class="footer">
+      <p>&copy; 2026 LMS App</p>
+    </footer>
+  </body>
+</html>

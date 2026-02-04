@@ -1,0 +1,18 @@
+{% extends "lmsApp/base.html" %}
+{% load static %}
+
+{% block title %}LMS{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'Styles/home.css' %}" />
+<link rel="stylesheet" href="{% static 'Styles/main.css' %}" />
+{% endblock %}
+
+{% block content %}
+    <div class="hero">
+        <h1>Welcome to the Library Management System</h1>
+        <p>You can handle all book and member related operations from the admin panel.</p>
+
+        <a href="/admin/" class="admin-link">Go to Admin Panel</a>
+    </div>
+{% endblock %}
