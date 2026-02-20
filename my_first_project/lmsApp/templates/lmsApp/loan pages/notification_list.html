@@ -1,0 +1,45 @@
+{% extends "lmsApp/base.html" %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'Styles/loan_pages.css' %}" />
+{% endblock %}
+
+{% block content %}
+<section class="loan-page">
+<div class="container mt-5">
+    <h2>Notifications</h2>
+    
+    {% if notifications %}
+        <div class="list-group">
+            {% for notification in notifications %}
+            <div
+                class="list-group-item list-group-item-action {% if not notification.is_read %}fw-bold text-primary{% endif %}"
+                   aria-current="true">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h5 class="mb-1">
+                            {% if notification.loan_request.status == 'APPROVED' %}
+                                <span class="badge bg-success">Approved</span>
+                            {% elif notification.loan_request.status == 'REJECTED' %}
+                                <span class="badge bg-danger">Rejected</span>
+                            {% elif notification.loan_request.status == 'EXPIRED' %}
+                                <span class="badge bg-warning text-dark">Expired</span>
+                            {% else %}
+                                <span class="badge bg-info text-dark">Info</span>
+                            {% endif %}
+                        </h5>
+                        <small class="text-muted">{{ notification.created_at|date:"M d, Y H:i" }}</small>
+                    </div>
+                    <p class="mb-1">{{ notification.message }}</p>
+                    <small class="text-muted">Book: {{ notification.loan_request.book.title }}</small>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            No notifications found.
+        </div>
+    {% endif %}
+</div>
+</section>
+{% endblock %}

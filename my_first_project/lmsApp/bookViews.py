@@ -6,25 +6,41 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.renderers import TemplateHTMLRenderer,JSONRenderer
 from rest_framework.exceptions import NotFound
-from .models import Book,Member
+from .models import Book,Member,LoanRequest
+from django.db.models import Q
 from .serrializer import BookSerializer,LoanSerializer
 from .form import BookForm
 
 # Create your views here.
-def home(request):
-    return render(request,'lmsApp/home.html')
+# def home(request):
+#     return render(request,'lmsApp/home.html')
 
 @api_view(['GET'])
 @renderer_classes([TemplateHTMLRenderer,JSONRenderer])
 def book_list(request):
     books=Book.objects.all()
+    # Track books with active/pending requests for the current member (temporary fallback).
+    member = Member.objects.first()
+    applied_book_ids = []
+    
+    if member:
+        # Find books where the member has a pending request or an active loan
+        active_requests = LoanRequest.objects.filter(
+            member=member
+        ).filter(
+            Q(status='PENDING') | 
+            (Q(status='APPROVED') & Q(loan__return_date__isnull=True))
+        ).values_list('book_id', flat=True)
+        
+        applied_book_ids = list(active_requests)
+
     serializer=BookSerializer(books,many=True)
 
     if request.accepted_renderer.format=="json":
         return Response(serializer.data,status=status.HTTP_200_OK)
     
     return Response(
-        {'books': books},
+        {'books': books, 'applied_book_ids': applied_book_ids},
         template_name='lmsApp/book pages/book_list.html'
     )
     
@@ -164,7 +180,8 @@ class loanMgtView(APIView):
         
         today=timezone.now().date()
 
-        active_loans=member.loans.filter(returned=False)
+        # Block new loans if any active loans are overdue.
+        active_loans=member.loans.filter(return_date__isnull=True)
         overdue_loans=[loan for loan in active_loans if loan.is_overdue]
 
         if overdue_loans:

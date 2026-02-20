@@ -9,6 +9,7 @@ from rest_framework.exceptions import NotFound
 @api_view(['GET'])
 @renderer_classes([TemplateHTMLRenderer,JSONRenderer])
 def author_list(request):
+    # Content negotiation: HTML for pages, JSON for API clients.
     authors=Author.objects.all()
     serializer=AuthorSerializer(authors,many=True)
     
@@ -20,6 +21,7 @@ def author_list(request):
 @api_view(['GET'])
 @renderer_classes([TemplateHTMLRenderer,JSONRenderer])
 def author_details(request,author_id):
+    # Keep API and template responses in sync for the same endpoint.
     try:
         author=Author.objects.get(pk=author_id)
     except Author.DoesNotExist:
