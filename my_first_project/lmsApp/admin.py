@@ -44,8 +44,6 @@ try:
     admin.site.unregister(Group)
 except admin.sites.NotRegistered:
     pass
-
-
 class AccessPredicateAdminMixin:
     access_predicate: Callable[[object], bool] = lambda self, user: False
 

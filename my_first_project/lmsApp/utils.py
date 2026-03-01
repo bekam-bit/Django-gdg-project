@@ -2,8 +2,7 @@ from django.utils import timezone
 from django.db import transaction
 from rest_framework_simplejwt.tokens import RefreshToken
 from lmsApp.models import LoanRequest
-# from lmsApp.staffLoanRequestView import send_notification_logic
- 
+
 def expire_loans():
     from lmsApp.staffLoanRequestView import send_notification_logic
     now = timezone.now()

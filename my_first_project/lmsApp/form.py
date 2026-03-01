@@ -23,11 +23,7 @@ class LoanRequestForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(LoanRequestForm, self).__init__(*args, **kwargs)
-        # Make it optional so we can manually validate it in the view if desired
-        # Or you can keep it required and use error_messages meta.
-        # But to support the user's view logic, we'll make it not required here 
-        # so is_valid() passes, and they can check it manually.
-        self.fields['agreed_to_policy'].required = False
+        self.fields['agreed_to_policy'].required = True
 
 
     def clean_requested_date(self):
@@ -43,6 +39,12 @@ class LoanRequestForm(forms.ModelForm):
         
         # Validation logic moved to view where book/member context is available
         return cleaned_data
+
+    def clean_agreed_to_policy(self):
+        agreed_to_policy = self.cleaned_data.get('agreed_to_policy')
+        if not agreed_to_policy:
+            raise forms.ValidationError("You must agree to the library policy.")
+        return agreed_to_policy
 
 class PaymentForm(forms.ModelForm):
     class Meta:

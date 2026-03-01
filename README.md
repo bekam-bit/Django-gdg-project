@@ -64,7 +64,7 @@ graph TD
 - Notifications are sent for approval and rejection.
 
 ### Overdue Notifications
-- `notify_overdue` scans active loans past `due_date` and notifies members.
+- `notify_overdue` scans active loans past `due_date` and notifiemembers.
 
 ---
 

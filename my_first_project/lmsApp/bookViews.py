@@ -6,7 +6,7 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.renderers import TemplateHTMLRenderer,JSONRenderer
 from rest_framework.exceptions import NotFound
-from .models import Book,Member,LoanRequest
+from .models import Book,Member,LoanRequest,Loan
 from django.db.models import Q
 from .serrializer import BookSerializer,LoanSerializer
 from .form import BookForm
@@ -19,20 +19,25 @@ from .form import BookForm
 @renderer_classes([TemplateHTMLRenderer,JSONRenderer])
 def book_list(request):
     books=Book.objects.all()
-    # Track books with active/pending requests for the current member (temporary fallback).
-    member = Member.objects.first()
+    # Track books where the current member cannot re-apply yet.
+    member = None
+    if request.user.is_authenticated and hasattr(request.user, 'member'):
+        member = request.user.member
+
     applied_book_ids = []
     
     if member:
-        # Find books where the member has a pending request or an active loan
-        active_requests = LoanRequest.objects.filter(
+        # Disable apply when there is a pending/approved request for the same book.
+        pending_or_approved_request_book_ids = LoanRequest.objects.filter(
             member=member
-        ).filter(
-            Q(status='PENDING') | 
-            (Q(status='APPROVED') & Q(loan__return_date__isnull=True))
+        ).filter(status__in=['PENDING', 'APPROVED']).values_list('book_id', flat=True)
+
+        # Disable apply while any loan for the same book is still active/overdue.
+        active_loan_book_ids = Loan.objects.filter(member=member).exclude(
+            status='RETURNED'
         ).values_list('book_id', flat=True)
         
-        applied_book_ids = list(active_requests)
+        applied_book_ids = list(set(pending_or_approved_request_book_ids) | set(active_loan_book_ids))
 
     serializer=BookSerializer(books,many=True)
 

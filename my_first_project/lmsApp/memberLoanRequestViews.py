@@ -10,6 +10,8 @@ from .serrializer import LoanRequestSerializer, TransactionSerializer
 from django.utils import timezone
 from datetime import datetime
 from .orm_queries import member_has_overdue_loans
+from django.urls import reverse
+from urllib.parse import urlencode
 
 @api_view(['GET','POST'])
 @renderer_classes([TemplateHTMLRenderer,JSONRenderer])
@@ -17,28 +19,80 @@ def LoanRequestView(request,book_id,member_id=None,transaction_id=None):
     
     book=get_object_or_404(Book,pk=book_id)
 
-    if member_id is None:
-        # Temporary fallback; replace with request.user in production.
-        member = Member.objects.first()
-        if not member:
-             return Response({"error": "No members exist options."}, status=status.HTTP_400_BAD_REQUEST)
-    else:
-        member=get_object_or_404(Member,pk=member_id)
-    
-    # Check for overdue loans generally
-    has_overdue = member_has_overdue_loans(member)
-    
-    # Check a specific transaction if provided, but also block on any unpaid fines.
-    transaction = None
-    if transaction_id:
-        transaction = get_object_or_404(Transaction, pk=transaction_id)
-    
-    # Check if member has ANY unpaid transactions
-    has_unpaid_fines = Transaction.objects.filter(member=member, status="UNPAID").exists()
+    member = None
+    if member_id is not None:
+        member = get_object_or_404(Member,pk=member_id)
+    elif request.user.is_authenticated and hasattr(request.user, 'member'):
+        member = request.user.member
+
+    content_type = (request.content_type or '').lower()
+    accept_header = (request.META.get('HTTP_ACCEPT') or '').lower()
+    is_browser_form_post = request.method == "POST" and (
+        content_type.startswith('application/x-www-form-urlencoded')
+        or content_type.startswith('multipart/form-data')
+    )
+    wants_html = (
+        request.accepted_renderer.format == 'html'
+        or 'text/html' in accept_header
+        or is_browser_form_post
+    )
+
+    if request.method == "GET" and member is None:
+        accepted_renderer = getattr(request, 'accepted_renderer', None)
+        if accepted_renderer and accepted_renderer.format == 'json':
+            return Response({"error": "User is not a registered member."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not request.user.is_authenticated:
+            login_url = reverse('login_member')
+            query_string = urlencode({'next': request.get_full_path()})
+            return redirect(f"{login_url}?{query_string}")
+
+        return Response(
+            {
+                'loan_request_form': LoanRequestForm(),
+                'book': book,
+                'member': None,
+                'error': "Authenticated user is not linked to a member profile."
+            },
+            template_name="lmsApp/loan pages/loan_request_form.html",
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
     if request.method=="POST":
+        if member is None:
+            accepted_renderer = getattr(request, 'accepted_renderer', None)
+            if accepted_renderer and accepted_renderer.format == 'json':
+                return Response({"error": "User is not a registered member."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not request.user.is_authenticated:
+                login_url = reverse('login_member')
+                query_string = urlencode({'next': request.get_full_path()})
+                return redirect(f"{login_url}?{query_string}")
+
+            return Response(
+                {
+                    'loan_request_form': LoanRequestForm(),
+                    'book': book,
+                    'member': None,
+                    'error': "Authenticated user is not linked to a member profile."
+                },
+                template_name="lmsApp/loan pages/loan_request_form.html",
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check for overdue loans generally
+        has_overdue = member_has_overdue_loans(member)
+
+        # Check a specific transaction if provided, but also block on any unpaid fines.
+        transaction = None
+        if transaction_id:
+            transaction = get_object_or_404(Transaction, pk=transaction_id)
+
+        # Check if member has ANY unpaid transactions
+        has_unpaid_fines = Transaction.objects.filter(member=member, status="UNPAID").exists()
+
         # Always try to render HTML if it's a browser request to this view, or if explicitly requested
-        if request.accepted_renderer.format == 'html' or isinstance(request.accepted_renderer, TemplateHTMLRenderer):
+        if wants_html:
             loan_request_form=LoanRequestForm(request.POST)
 
             if loan_request_form.is_valid():
@@ -47,7 +101,7 @@ def LoanRequestView(request,book_id,member_id=None,transaction_id=None):
                 temp_loan_request = loan_request_form.save(commit=False)
                 
                 copies=book.available_copies # Fixed spelling error avialble_copies -> available_copies
-                if copies <= 0: # Changed from <= 3 to <= 0 or whatever logic is correct. Assuming user meant available_copies check.
+                if copies <= 0:
                     loan_request_form.add_error(None,"Not enough available copies.")
                     return Response(
                         {'loan_request_form':loan_request_form,'book':book,'member':member},
@@ -100,14 +154,6 @@ def LoanRequestView(request,book_id,member_id=None,transaction_id=None):
                         status=status.HTTP_400_BAD_REQUEST
                     )
 
-                if temp_loan_request.agreed_to_policy == False:
-                    loan_request_form.add_error('agreed_to_policy',"You must agree to the library policy.")
-                    return Response(
-                        {'loan_request_form':loan_request_form,'book':book,'member':member},
-                        template_name="lmsApp/loan pages/loan_request_form.html",
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-
                 with db_transaction.atomic():
                     loan_request=loan_request_form.save(commit=False)
                     loan_request.book=book
@@ -135,7 +181,7 @@ def LoanRequestView(request,book_id,member_id=None,transaction_id=None):
             )
     else:
         # Check if the accepted renderer is TemplateHTMLRenderer
-        if request.accepted_renderer.format == 'html' or isinstance(request.accepted_renderer, TemplateHTMLRenderer): # Force HTML for debugging, or content negotiation is picking HTML but my check is failing
+        if wants_html:
             loan_request_form=LoanRequestForm()
             return Response(
                 {'loan_request_form':loan_request_form,'book':book,'member':member},
@@ -146,7 +192,7 @@ def LoanRequestView(request,book_id,member_id=None,transaction_id=None):
         else:
             return Response({
                 "book":{"id":book.book_id, "title":book.title, "available_copies":book.available_copies, "max_loan_duration":book.max_loan_duration},
-                "member": {"id":member.member_id, "name":member.member_name}
+                "member": {"id":member.member_id, "name":member.member_name} if member else None
             })
         
 def loan_request_success(request):
@@ -162,19 +208,11 @@ def no_overdue(request):
     return render(request, 'lmsApp/transaction pages/no_overdue.html')
 
 def recieveNotification(request, notification_id=None):
-    # Resolve the member from the current user; fallback keeps demo flow working.
-    try:
-        if hasattr(request.user, 'member'):
-            member = request.user.member
-        else:
-            # Fallback: Find member by email or just get the first one
-            member = Member.objects.filter(email=request.user.email).first()
-            if not member:
-                member = Member.objects.first()
-    except:
-        member = Member.objects.first()
-
-    if not member:
+    # Resolve the member from the current user
+    if request.user.is_authenticated and hasattr(request.user, 'member'):
+        member = request.user.member
+    else:
+        # If user is not authenticated or not a member, show empty list or handle as error
         return render(request, "lmsApp/loan pages/notification_list.html", {'notifications': []})
 
     if notification_id:
@@ -185,8 +223,9 @@ def recieveNotification(request, notification_id=None):
             member=member
         )
 
-        notification.is_read=True
-        notification.save()
+        if not notification.is_read:
+            notification.is_read=True
+            notification.save(update_fields=['is_read'])
 
         return render(request,
                       "lmsApp/loan pages/recieve_notification.html",
@@ -195,11 +234,33 @@ def recieveNotification(request, notification_id=None):
     else:
         notifications=Notification.objects.filter(
             member=member
-        ).select_related('loan_request','loan_request__book').order_by('created_at')
+        ).select_related('loan_request','loan_request__book').order_by('-created_at')
 
         return render(request,
                       "lmsApp/loan pages/notification_list.html",
                       {'notifications':notifications})
+
+
+def toggleNotificationRead(request, notification_id):
+    if not request.user.is_authenticated or not hasattr(request.user, 'member'):
+        return redirect('notifications')
+
+    if request.method != "POST":
+        return redirect('notifications')
+
+    member = request.user.member
+    notification = get_object_or_404(Notification, pk=notification_id, member=member)
+
+    action = request.POST.get('action')
+    notification.is_read = action != 'mark_unread'
+    notification.save(update_fields=['is_read'])
+
+    next_page = request.POST.get('next')
+    if next_page == 'detail':
+        return redirect('recieveNotification', notification_id=notification.notification_id)
+
+    return redirect('notifications')
+
 
 @api_view(['GET','POST'])
 @renderer_classes([TemplateHTMLRenderer,JSONRenderer])
@@ -212,7 +273,7 @@ def PaymentView(request, transaction_id):
     if loan.return_date:
         delta = loan.return_date - loan.due_date
         overdue_days = max(delta.days, 0)
-    else:
+    else: 
         delta = timezone.now().date() - loan.due_date
         overdue_days = max(delta.days, 0)
         

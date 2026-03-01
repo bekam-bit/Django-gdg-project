@@ -135,9 +135,77 @@
   margin-top: 24px;
 }
 
+.loan-page .notification-list {
+  display: grid;
+  gap: 12px;
+}
+
+.loan-page .notification-item {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  gap: 12px;
+  align-items: start;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--surface);
+}
+
+.loan-page .notification-item.is-unread {
+  border-color: var(--accent);
+}
+
+.loan-page .notification-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 7px;
+  background: transparent;
+}
+
+.loan-page .notification-item.is-unread .notification-dot {
+  background: var(--accent);
+}
+
+.loan-page .notification-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.loan-page .status-text {
+  font-weight: 600;
+}
+
+.loan-page .status-text.is-unread {
+  color: var(--accent);
+}
+
+.loan-page .status-text.is-read {
+  color: var(--muted);
+}
+
+.loan-page .notification-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 @media (max-width: 640px) {
   .loan-page .page-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .loan-page .notification-item {
+    grid-template-columns: 10px 1fr;
+  }
+
+  .loan-page .notification-actions {
+    grid-column: 2;
+    justify-content: flex-start;
   }
 }

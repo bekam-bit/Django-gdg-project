@@ -39,10 +39,7 @@ def manage_loan_creation(sender, instance, created, **kwargs):
             book.available_copies -= 1
             book.save()
         else:
-             # In a real signal, raising error here might be late as transaction could be committed partially depending on DB,
-             # but standard Django behavior rolls back on error in atomic block.
-             # However, creating a loan for a book with 0 copies should probably be prevented.
-             pass
+            pass
 
         # 2. Link to existing approved request and SET DATES based on CREATION TIME
         # This guarantees that the loan starts NOW (at creation), not at approval time.
