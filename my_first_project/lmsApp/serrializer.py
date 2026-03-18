@@ -1,36 +1,64 @@
 from rest_framework import serializers
-from .models import Book,Loan,Author,LoanRequest,Transaction,User
+from .models import (
+    Author,
+    Book,
+    Category,
+    Loan,
+    LoanRequest,
+    Member,
+    Notification,
+    Transaction,
+    User,
+)
 from django.contrib.auth import authenticate
 from .utils import get_tokens_for_user
 
-class BookSerializer(serializers.ModelSerializer):
-    class Meta:
-        model=Book
-        fields='__all__'
-        read_only_fields=['ISBN','available_copies']
-
-class LoanSerializer(serializers.ModelSerializer):
-    class Meta:
-        model=Loan
-        fields='__all__'
-        read_only_fields=['loan_id','loan_date']
 
 class AuthorSerializer(serializers.ModelSerializer):
     class Meta:
-        model=Author
-        fields='__all__'
+        model = Author
+        fields = '__all__'
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = '__all__'
+
+class BookSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Book
+        fields = '__all__'
+        read_only_fields = ['available_copies']
+
+
+class MemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Member
+        fields = '__all__'
+
+class LoanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Loan
+        fields = '__all__'
+        read_only_fields = ['loan_id']
 
 class LoanRequestSerializer(serializers.ModelSerializer):
     class Meta:
-        model=LoanRequest
-        fields='__all__'
-        read_only_fields=['member','book']
+        model = LoanRequest
+        fields = '__all__'
 
 class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
-        model=Transaction
-        fields='__all__'
-        read_only_fields=['created_at']
+        model = Transaction
+        fields = '__all__'
+        read_only_fields = ['created_at']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = '__all__'
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password=serializers.CharField(write_only=True)
